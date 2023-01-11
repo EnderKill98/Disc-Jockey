@@ -25,11 +25,12 @@ public class SongLoader {
             SONG_SUGGESTIONS.clear();
             SONG_SUGGESTIONS.add("Songs are loading, please wait");
             for (File file : Main.songsFolder.listFiles()) {
+                //Main.LOGGER.info("Loading file " + file.getName() + "...");
                 Song song = null;
                 try {
                     song = loadSong(file);
-                } catch (IOException exception) {
-                    Main.LOGGER.error("Unable to read song "+file.getName(), exception);
+                } catch (Exception exception) {
+                    Main.LOGGER.error("Unable to read song " + file.getName(), exception);
                 }
                 if (song != null) SONGS.add(song);
             }
