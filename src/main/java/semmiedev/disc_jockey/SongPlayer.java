@@ -203,12 +203,12 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     //      11/1/2023 Playback now done in separate thread. Not ideal but better especiall when FPS are low.
     @Override
     public void onStartTick(ClientWorld world) {
-
         if (noteBlocks == null) {
             noteBlocks = new HashMap<>();
 
             MinecraftClient client = MinecraftClient.getInstance();
             ClientPlayerEntity player = client.player;
+            if(player == null) return;
 
             ArrayList<Note> capturedNotes = new ArrayList<>();
 
