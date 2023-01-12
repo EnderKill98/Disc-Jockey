@@ -51,6 +51,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     public long playbackLoopDelay = 5;
     // Just for external debugging purposes
     public HashMap<Block, Integer> missingInstrumentBlocks = new HashMap<>();
+    public float speed = 1.0f;
 
     public synchronized void startPlaybackThread() {
         this.playbackThread = new Thread(() -> {
@@ -192,6 +193,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 float inaccuracyFactor = (1000.0F / tps) / ((float) (lastPlaybackTickAt - previousPlaybackTickAt));
                 tps *= inaccuracyFactor;
             }
+            tps /= speed;
 
             tick += song.tempo / 100f / tps;
         }
