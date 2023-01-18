@@ -203,12 +203,13 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     //      11/1/2023 Playback now done in separate thread. Not ideal but better especiall when FPS are low.
     @Override
     public void onStartTick(ClientWorld world) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if(world == null || client.world == null || client.player == null) return;
+
         if (noteBlocks == null) {
             noteBlocks = new HashMap<>();
 
-            MinecraftClient client = MinecraftClient.getInstance();
             ClientPlayerEntity player = client.player;
-            if(player == null) return;
 
             ArrayList<Note> capturedNotes = new ArrayList<>();
 
@@ -218,8 +219,8 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                     for (int z = -7; z <= 7; z++) {
                         BlockPos blockPos = new BlockPos(playerPos.add(x, y, z));
                         if (canInteractWith(player, blockPos)) {
-                            BlockState blockState = client.world.getBlockState(blockPos);
-                            if (blockState.isOf(Blocks.NOTE_BLOCK) && client.world.isAir(blockPos.up())) {
+                            BlockState blockState = world.getBlockState(blockPos);
+                            if (blockState.isOf(Blocks.NOTE_BLOCK) && world.isAir(blockPos.up())) {
                                 for (Note note : song.uniqueNotes) {
                                     if (!capturedNotes.contains(note) && blockState.get(Properties.INSTRUMENT) == note.instrument) {
                                         getNotes(note.instrument).put(note.note, blockPos);
@@ -257,11 +258,10 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
             }
             tuned = true;
 
-            MinecraftClient client = MinecraftClient.getInstance();
             int tuneAmount = 0;
             for (Note note : song.uniqueNotes) {
                 BlockPos blockPos = noteBlocks.get(note.instrument).get(note.note);
-                BlockState blockState = client.world.getBlockState(blockPos);
+                BlockState blockState = world.getBlockState(blockPos);
 
                 if (blockState.contains(Properties.NOTE)) {
                     if (blockState.get(Properties.NOTE) != note.note) {
