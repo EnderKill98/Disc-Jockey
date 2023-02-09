@@ -57,6 +57,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
 
     private long lastInteractAt = -1;
     private float availableInteracts = 8;
+    private int tuneInitialUntunedBlocks = -1;
 
     public synchronized void startPlaybackThread() {
         this.playbackThread = new Thread(() -> {
@@ -107,6 +108,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         tick = 0;
         noteBlocks = null;
         tuned = false;
+        tuneInitialUntunedBlocks = -1;
         lastPlaybackTickAt = -1L;
         last100MsSpanAt = -1L;
         last100MsSpanEstimatedPackets = 0;
@@ -289,14 +291,21 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 }
             }
 
+            if(tuneInitialUntunedBlocks == -1 || tuneInitialUntunedBlocks < untunedNotes.size())
+                tuneInitialUntunedBlocks = untunedNotes.size();
+
             if(untunedNotes.isEmpty()) {
-                // Wait additional 300ms before considering tuned after changing notes (in case the server rejects an interact)
-                if(lastInteractAt == -1 || System.currentTimeMillis() - lastInteractAt >= 300)
+                // Wait roundrip + 100ms before considering tuned after changing notes (in case the server rejects an interact)
+                int ping = client.getNetworkHandler() != null && client.getNetworkHandler().getPlayerListEntry(client.player.getGameProfile().getId()) != null ? client.getNetworkHandler().getPlayerListEntry(client.player.getGameProfile().getId()).getLatency() : 0;
+                if(lastInteractAt == -1 || System.currentTimeMillis() - lastInteractAt >= ping + 100) {
                     tuned = true;
+                    tuneInitialUntunedBlocks = -1;
+                }
             }
 
             BlockPos lastBlockPos = null;
             int lastTunedNote = Integer.MIN_VALUE;
+            float roughTuneProgress = 1 - (untunedNotes.size() / Math.max(tuneInitialUntunedBlocks + 0f, 1f));
             while(availableInteracts >= 1f && untunedNotes.size() > 0) {
                 BlockPos blockPos = null;
                 int searches = 0;
@@ -337,8 +346,10 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 lastBlockPos = blockPos;
             }
             if(lastBlockPos != null) {
-                Vec3d unit = Vec3d.ofCenter(lastBlockPos, 0.5).subtract(client.player.getEyePos()).normalize();
-                client.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(MathHelper.wrapDegrees((float) (MathHelper.atan2(unit.z, unit.x) * 57.2957763671875) - 90.0f), MathHelper.wrapDegrees((float) (-(MathHelper.atan2(unit.y, Math.sqrt(unit.x * unit.x + unit.z * unit.z)) * 57.2957763671875))), true));
+                //Vec3d unit = Vec3d.ofCenter(lastBlockPos, 0.5).subtract(client.player.getEyePos()).normalize();
+                //client.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(MathHelper.wrapDegrees((float) (MathHelper.atan2(unit.z, unit.x) * 57.2957763671875) - 90.0f), MathHelper.wrapDegrees((float) (-(MathHelper.atan2(unit.y, Math.sqrt(unit.x * unit.x + unit.z * unit.z)) * 57.2957763671875))), true));
+                // Turn head into spinning with time and lookup up further the further tuning is progressed
+                client.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(((float) (System.currentTimeMillis() % 2000)) * (360f/2000f), (1 - roughTuneProgress) * 180 - 90, true));
                 client.player.swingHand(Hand.MAIN_HAND);
             }
         }
