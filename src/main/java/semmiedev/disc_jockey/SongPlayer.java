@@ -18,9 +18,12 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import net.minecraft.world.GameMode;
+import org.checkerframework.checker.units.qual.A;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 
 public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private static boolean warned;
@@ -32,7 +35,6 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private float tick;
     private HashMap<Instrument, HashMap<Byte, BlockPos>> noteBlocks = null;
     private boolean tuned;
-    private long tuneDelayUntil = -1L;
     private long lastPlaybackTickAt = -1L;
 
     // Used to check and enforce packet rate limits to not get kicked
@@ -52,6 +54,9 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     // Just for external debugging purposes
     public HashMap<Block, Integer> missingInstrumentBlocks = new HashMap<>();
     public float speed = 1.0f;
+
+    private long lastInteractAt = -1;
+    private float availableInteracts = 8;
 
     public synchronized void startPlaybackThread() {
         this.playbackThread = new Thread(() -> {
@@ -253,12 +258,18 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 stop();
             }
         } else if (!tuned) {
-            if (tuneDelayUntil != -1L && tuneDelayUntil > System.currentTimeMillis()) {
-                return;
-            }
-            tuned = true;
+            //tuned = true;
 
-            int tuneAmount = 0;
+            if(lastInteractAt != -1L) {
+                // Paper allows 8 interacts per 300 ms
+                availableInteracts += ((System.currentTimeMillis() - lastInteractAt) / (310.0 / 8.0));
+                availableInteracts = Math.min(8f, Math.max(0f, availableInteracts));
+            }else {
+                availableInteracts = 8f;
+                lastInteractAt = System.currentTimeMillis();
+            }
+
+            HashMap<BlockPos, Integer> untunedNotes = new HashMap<>();
             for (Note note : song.uniqueNotes) {
                 BlockPos blockPos = noteBlocks.get(note.instrument).get(note.note);
                 BlockState blockState = world.getBlockState(blockPos);
@@ -270,20 +281,65 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                             client.inGameHud.getChatHud().addMessage(Text.translatable(Main.MOD_ID+".player.to_far").formatted(Formatting.RED));
                             return;
                         }
-                        Vec3d unit = Vec3d.ofCenter(blockPos, 0.5).subtract(client.player.getEyePos()).normalize();
-                        client.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(MathHelper.wrapDegrees((float) (MathHelper.atan2(unit.z, unit.x) * 57.2957763671875) - 90.0f), MathHelper.wrapDegrees((float) (-(MathHelper.atan2(unit.y, Math.sqrt(unit.x * unit.x + unit.z * unit.z)) * 57.2957763671875))), true));
-                        client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, new BlockHitResult(Vec3d.of(blockPos), Direction.UP, blockPos, false));
-                        client.player.swingHand(Hand.MAIN_HAND);
-                        tuned = false;
-
-                        // The server (at least) paper allows 8 interacts per 300ms afaik
-                        tuneDelayUntil = System.currentTimeMillis() + 300;
-                        if (++tuneAmount == 8) break;
+                        untunedNotes.put(blockPos, blockState.get(Properties.NOTE));
                     }
                 } else {
                     noteBlocks = null;
                     break;
                 }
+            }
+
+            if(untunedNotes.isEmpty()) {
+                // Wait additional 300ms before considering tuned after changing notes (in case the server rejects an interact)
+                if(lastInteractAt == -1 || System.currentTimeMillis() - lastInteractAt >= 300)
+                    tuned = true;
+            }
+
+            BlockPos lastBlockPos = null;
+            int lastTunedNote = Integer.MIN_VALUE;
+            while(availableInteracts >= 1f && untunedNotes.size() > 0) {
+                BlockPos blockPos = null;
+                int searches = 0;
+                while(blockPos == null) {
+                    searches++;
+                    // Find higher note
+                    for (Map.Entry<BlockPos, Integer> entry : untunedNotes.entrySet()) {
+                        if (entry.getValue() > lastTunedNote) {
+                            blockPos = entry.getKey();
+                            break;
+                        }
+                    }
+                    // Find higher note or equal
+                    if (blockPos == null) {
+                        for (Map.Entry<BlockPos, Integer> entry : untunedNotes.entrySet()) {
+                            if (entry.getValue() >= lastTunedNote) {
+                                blockPos = entry.getKey();
+                                break;
+                            }
+                        }
+                    }
+                    // Not found. Reset last note
+                    if(blockPos == null)
+                        lastTunedNote = Integer.MIN_VALUE;
+                    if(blockPos == null && searches > 1) {
+                        // Something went wrong. Take any note (one should at least exist here)
+                        blockPos = untunedNotes.keySet().toArray(new BlockPos[0])[0];
+                        break;
+                    }
+                }
+                if(blockPos == null) return; // Something went very, very wrong!
+
+                lastTunedNote = untunedNotes.get(blockPos);
+                untunedNotes.remove(blockPos);
+                client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, new BlockHitResult(Vec3d.of(blockPos), Direction.UP, blockPos, false));
+                lastInteractAt = System.currentTimeMillis();
+                availableInteracts -= 1f;
+                lastBlockPos = blockPos;
+            }
+            if(lastBlockPos != null) {
+                Vec3d unit = Vec3d.ofCenter(lastBlockPos, 0.5).subtract(client.player.getEyePos()).normalize();
+                client.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(MathHelper.wrapDegrees((float) (MathHelper.atan2(unit.z, unit.x) * 57.2957763671875) - 90.0f), MathHelper.wrapDegrees((float) (-(MathHelper.atan2(unit.y, Math.sqrt(unit.x * unit.x + unit.z * unit.z)) * 57.2957763671875))), true));
+                client.player.swingHand(Hand.MAIN_HAND);
             }
         }
     }
