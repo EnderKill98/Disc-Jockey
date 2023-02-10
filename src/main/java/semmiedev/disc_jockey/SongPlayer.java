@@ -274,6 +274,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
             HashMap<BlockPos, Integer> untunedNotes = new HashMap<>();
             for (Note note : song.uniqueNotes) {
                 BlockPos blockPos = noteBlocks.get(note.instrument).get(note.note);
+                if(blockPos == null) continue;
                 BlockState blockState = world.getBlockState(blockPos);
 
                 if (blockState.contains(Properties.NOTE)) {
