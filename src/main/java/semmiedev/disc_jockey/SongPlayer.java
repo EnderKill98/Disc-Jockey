@@ -15,13 +15,12 @@ import net.minecraft.state.property.Properties;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
+import net.minecraft.util.Pair;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import net.minecraft.world.GameMode;
-import org.checkerframework.checker.units.qual.A;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -58,6 +57,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private long lastInteractAt = -1;
     private float availableInteracts = 8;
     private int tuneInitialUntunedBlocks = -1;
+    private HashMap<BlockPos, Pair<Integer, Long>> notePredictions = new HashMap<>();
 
     public synchronized void startPlaybackThread() {
         this.playbackThread = new Thread(() -> {
@@ -107,6 +107,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         index = 0;
         tick = 0;
         noteBlocks = null;
+        notePredictions.clear();
         tuned = false;
         tuneInitialUntunedBlocks = -1;
         lastPlaybackTickAt = -1L;
@@ -213,6 +214,14 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         MinecraftClient client = MinecraftClient.getInstance();
         if(world == null || client.world == null || client.player == null) return;
 
+        // Clear outdated note predictions
+        ArrayList<BlockPos> outdatedPredictions = new ArrayList<>();
+        for(Map.Entry<BlockPos, Pair<Integer, Long>> entry : notePredictions.entrySet()) {
+            if(entry.getValue().getRight() < System.currentTimeMillis())
+                outdatedPredictions.add(entry.getKey());
+        }
+        for(BlockPos outdatedPrediction : outdatedPredictions) notePredictions.remove(outdatedPrediction);
+
         if (noteBlocks == null) {
             noteBlocks = new HashMap<>();
 
@@ -276,9 +285,10 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 BlockPos blockPos = noteBlocks.get(note.instrument).get(note.note);
                 if(blockPos == null) continue;
                 BlockState blockState = world.getBlockState(blockPos);
+                int assumedNote = notePredictions.containsKey(blockPos) ? notePredictions.get(blockPos).getLeft() : blockState.get(Properties.NOTE);
 
                 if (blockState.contains(Properties.NOTE)) {
-                    if (blockState.get(Properties.NOTE) != note.note) {
+                    if (assumedNote != note.note) {
                         if (!canInteractWith(client.player, blockPos)) {
                             stop();
                             client.inGameHud.getChatHud().addMessage(Text.translatable(Main.MOD_ID+".player.to_far").formatted(Formatting.RED));
@@ -341,7 +351,12 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
 
                 lastTunedNote = untunedNotes.get(blockPos);
                 untunedNotes.remove(blockPos);
+                int assumedNote = notePredictions.containsKey(blockPos) ? notePredictions.get(blockPos).getLeft() : client.world.getBlockState(blockPos).get(Properties.NOTE);
+                notePredictions.put(blockPos, new Pair((assumedNote + 1) % 25, System.currentTimeMillis() + 200));
+                //Main.LOGGER.info("Block before interact at " + blockPos + ": " + client.world.getBlockState(blockPos).get(Properties.NOTE));
                 client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, new BlockHitResult(Vec3d.of(blockPos), Direction.UP, blockPos, false));
+                //client.world.setBlockState(blockPos, client.world.getBlockState(blockPos).with(Properties.NOTE, (client.world.getBlockState(blockPos).get(Properties.NOTE) + 1) % 25));
+                //Main.LOGGER.info("Block after interact at " + blockPos + ": " + client.world.getBlockState(blockPos).get(Properties.NOTE));
                 lastInteractAt = System.currentTimeMillis();
                 availableInteracts -= 1f;
                 lastBlockPos = blockPos;
