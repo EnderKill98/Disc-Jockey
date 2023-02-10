@@ -8,6 +8,7 @@ import net.minecraft.block.enums.Instrument;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.hud.ChatHud;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
@@ -271,6 +272,13 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         } else if (!tuned) {
             //tuned = true;
 
+            int ping = 0;
+            {
+                PlayerListEntry playerListEntry;
+                if (client.getNetworkHandler() != null && (playerListEntry = client.getNetworkHandler().getPlayerListEntry(client.player.getGameProfile().getId())) != null)
+                    ping = playerListEntry.getLatency();
+            }
+
             if(lastInteractAt != -1L) {
                 // Paper allows 8 interacts per 300 ms
                 availableInteracts += ((System.currentTimeMillis() - lastInteractAt) / (310.0 / 8.0));
@@ -280,6 +288,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 lastInteractAt = System.currentTimeMillis();
             }
 
+            int fullyTunedBlocks = 0;
             HashMap<BlockPos, Integer> untunedNotes = new HashMap<>();
             for (Note note : song.uniqueNotes) {
                 BlockPos blockPos = noteBlocks.get(note.instrument).get(note.note);
@@ -288,6 +297,8 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 int assumedNote = notePredictions.containsKey(blockPos) ? notePredictions.get(blockPos).getLeft() : blockState.get(Properties.NOTE);
 
                 if (blockState.contains(Properties.NOTE)) {
+                    if(assumedNote == note.note && blockState.get(Properties.NOTE) == note.note)
+                        fullyTunedBlocks++;
                     if (assumedNote != note.note) {
                         if (!canInteractWith(client.player, blockPos)) {
                             stop();
@@ -305,10 +316,9 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
             if(tuneInitialUntunedBlocks == -1 || tuneInitialUntunedBlocks < untunedNotes.size())
                 tuneInitialUntunedBlocks = untunedNotes.size();
 
-            if(untunedNotes.isEmpty()) {
+            if(untunedNotes.isEmpty() && fullyTunedBlocks == song.uniqueNotes.size()) {
                 // Wait roundrip + 100ms before considering tuned after changing notes (in case the server rejects an interact)
-                int ping = client.getNetworkHandler() != null && client.getNetworkHandler().getPlayerListEntry(client.player.getGameProfile().getId()) != null ? client.getNetworkHandler().getPlayerListEntry(client.player.getGameProfile().getId()).getLatency() : 0;
-                if(lastInteractAt == -1 || System.currentTimeMillis() - lastInteractAt >= ping + 100) {
+                if(lastInteractAt == -1 || System.currentTimeMillis() - lastInteractAt >= ping * 2 + 100) {
                     tuned = true;
                     tuneInitialUntunedBlocks = -1;
                 }
@@ -352,7 +362,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 lastTunedNote = untunedNotes.get(blockPos);
                 untunedNotes.remove(blockPos);
                 int assumedNote = notePredictions.containsKey(blockPos) ? notePredictions.get(blockPos).getLeft() : client.world.getBlockState(blockPos).get(Properties.NOTE);
-                notePredictions.put(blockPos, new Pair((assumedNote + 1) % 25, System.currentTimeMillis() + 200));
+                notePredictions.put(blockPos, new Pair((assumedNote + 1) % 25, System.currentTimeMillis() + ping * 2 + 100));
                 //Main.LOGGER.info("Block before interact at " + blockPos + ": " + client.world.getBlockState(blockPos).get(Properties.NOTE));
                 client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, new BlockHitResult(Vec3d.of(blockPos), Direction.UP, blockPos, false));
                 //client.world.setBlockState(blockPos, client.world.getBlockState(blockPos).with(Properties.NOTE, (client.world.getBlockState(blockPos).get(Properties.NOTE) + 1) % 25));
