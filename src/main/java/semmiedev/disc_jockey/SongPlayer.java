@@ -363,17 +363,12 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 untunedNotes.remove(blockPos);
                 int assumedNote = notePredictions.containsKey(blockPos) ? notePredictions.get(blockPos).getLeft() : client.world.getBlockState(blockPos).get(Properties.NOTE);
                 notePredictions.put(blockPos, new Pair((assumedNote + 1) % 25, System.currentTimeMillis() + ping * 2 + 100));
-                //Main.LOGGER.info("Block before interact at " + blockPos + ": " + client.world.getBlockState(blockPos).get(Properties.NOTE));
                 client.interactionManager.interactBlock(client.player, Hand.MAIN_HAND, new BlockHitResult(Vec3d.of(blockPos), Direction.UP, blockPos, false));
-                //client.world.setBlockState(blockPos, client.world.getBlockState(blockPos).with(Properties.NOTE, (client.world.getBlockState(blockPos).get(Properties.NOTE) + 1) % 25));
-                //Main.LOGGER.info("Block after interact at " + blockPos + ": " + client.world.getBlockState(blockPos).get(Properties.NOTE));
                 lastInteractAt = System.currentTimeMillis();
                 availableInteracts -= 1f;
                 lastBlockPos = blockPos;
             }
             if(lastBlockPos != null) {
-                //Vec3d unit = Vec3d.ofCenter(lastBlockPos, 0.5).subtract(client.player.getEyePos()).normalize();
-                //client.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(MathHelper.wrapDegrees((float) (MathHelper.atan2(unit.z, unit.x) * 57.2957763671875) - 90.0f), MathHelper.wrapDegrees((float) (-(MathHelper.atan2(unit.y, Math.sqrt(unit.x * unit.x + unit.z * unit.z)) * 57.2957763671875))), true));
                 // Turn head into spinning with time and lookup up further the further tuning is progressed
                 client.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(((float) (System.currentTimeMillis() % 2000)) * (360f/2000f), (1 - roughTuneProgress) * 180 - 90, true));
                 client.player.swingHand(Hand.MAIN_HAND);
