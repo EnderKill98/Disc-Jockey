@@ -20,9 +20,11 @@ import net.minecraft.util.Pair;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import net.minecraft.world.GameMode;
+import org.checkerframework.checker.units.qual.A;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 public class SongPlayer implements ClientTickEvents.StartWorldTick {
@@ -228,27 +230,51 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
 
             ClientPlayerEntity player = client.player;
 
-            ArrayList<Note> capturedNotes = new ArrayList<>();
-
-            Vec3d playerPos = player.getEyePos();
-            for (int x = -7; x <= 7; x++) {
-                for (int y = -7; y <= 7; y++) {
-                    for (int z = -7; z <= 7; z++) {
-                        BlockPos blockPos = new BlockPos(playerPos.add(x, y, z));
-                        if (canInteractWith(player, blockPos)) {
+            // Create list of available noteblock positions per used instrument
+            HashMap<Instrument, ArrayList<BlockPos>> noteblocksForInstrument = new HashMap<>();
+            for(Note note : song.uniqueNotes) noteblocksForInstrument.putIfAbsent(note.instrument, new ArrayList<>());
+            final Vec3d playerPos = player.getEyePos();
+            final int[] orderedOffsets = new int[] { 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7 };
+            for(Instrument instrument : noteblocksForInstrument.keySet().toArray(new Instrument[0])) {
+                for (int y : orderedOffsets) {
+                    for (int x : orderedOffsets) {
+                        for (int z : orderedOffsets) {
+                            BlockPos blockPos = new BlockPos(playerPos.add(x, y, z));
+                            if (!canInteractWith(player, blockPos))
+                                continue;
                             BlockState blockState = world.getBlockState(blockPos);
-                            if (blockState.isOf(Blocks.NOTE_BLOCK) && world.isAir(blockPos.up())) {
-                                for (Note note : song.uniqueNotes) {
-                                    if (!capturedNotes.contains(note) && blockState.get(Properties.INSTRUMENT) == note.instrument) {
-                                        getNotes(note.instrument).put(note.note, blockPos);
-                                        capturedNotes.add(note);
-                                        break;
-                                    }
-                                }
-                            }
+                            if (!blockState.isOf(Blocks.NOTE_BLOCK) || !world.isAir(blockPos.up()))
+                                continue;
+
+                            if (blockState.get(Properties.INSTRUMENT) == instrument)
+                                noteblocksForInstrument.get(instrument).add(blockPos);
                         }
                     }
                 }
+            }
+
+            // Find fitting noteblocks with least amount of adjustments required (to reduce tuning time)
+            ArrayList<Note> capturedNotes = new ArrayList<>();
+            for(Note note : song.uniqueNotes) {
+                ArrayList<BlockPos> availableBlocks = noteblocksForInstrument.get(note.instrument);
+                BlockPos bestBlockPos = null;
+                int bestBlockTuningSteps = Integer.MAX_VALUE;
+                for(BlockPos blockPos : availableBlocks) {
+                    int wantedNote = note.note;
+                    int currentNote = client.world.getBlockState(blockPos).get(Properties.NOTE);
+                    int tuningSteps = wantedNote >= currentNote ? wantedNote - currentNote : (25 - currentNote) + wantedNote;
+
+                    if(tuningSteps < bestBlockTuningSteps) {
+                        bestBlockPos = blockPos;
+                        bestBlockTuningSteps = tuningSteps;
+                    }
+                }
+
+                if(bestBlockPos != null) {
+                    capturedNotes.add(note);
+                    availableBlocks.remove(bestBlockPos);
+                    getNotes(note.instrument).put(note.note, bestBlockPos);
+                } // else will be a missing note
             }
 
             ArrayList<Note> missingNotes = new ArrayList<>(song.uniqueNotes);
