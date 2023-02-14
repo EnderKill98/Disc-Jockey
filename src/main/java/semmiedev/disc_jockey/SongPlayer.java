@@ -21,15 +21,14 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import net.minecraft.world.GameMode;
 import org.checkerframework.checker.units.qual.A;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 
 public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private static boolean warned;
-
     public boolean running;
     public Song song;
 
@@ -55,13 +54,14 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     public long playbackLoopDelay = 5;
     // Just for external debugging purposes
     public HashMap<Block, Integer> missingInstrumentBlocks = new HashMap<>();
-    public float speed = 1.0f;
+    public float speed = 1.0f; // Toy
 
     private long lastInteractAt = -1;
     private float availableInteracts = 8;
     private int tuneInitialUntunedBlocks = -1;
     private HashMap<BlockPos, Pair<Integer, Long>> notePredictions = new HashMap<>();
 
+    public @NotNull HashMap<Instrument, Instrument> instrumentMap = new HashMap<>(); // Toy
     public synchronized void startPlaybackThread() {
         this.playbackThread = new Thread(() -> {
             Thread ownThread = this.playbackThread;
@@ -232,7 +232,8 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
 
             // Create list of available noteblock positions per used instrument
             HashMap<Instrument, ArrayList<BlockPos>> noteblocksForInstrument = new HashMap<>();
-            for(Note note : song.uniqueNotes) noteblocksForInstrument.putIfAbsent(note.instrument, new ArrayList<>());
+            for(Instrument instrument : Instrument.values())
+                noteblocksForInstrument.put(instrument, new ArrayList<>());
             final Vec3d playerPos = player.getEyePos();
             final int[] orderedOffsets = new int[] { 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7 };
             for(Instrument instrument : noteblocksForInstrument.keySet().toArray(new Instrument[0])) {
@@ -253,7 +254,16 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 }
             }
 
-            // Find fitting noteblocks with least amount of adjustments required (to reduce tuning time)
+            // Remap instruments for funzies
+            if(!instrumentMap.isEmpty()) {
+                HashMap<Instrument, ArrayList<BlockPos>> newNoteblocksForInstrument = new HashMap<>();
+                for(Instrument orig : noteblocksForInstrument.keySet()) {
+                    newNoteblocksForInstrument.put(orig, noteblocksForInstrument.getOrDefault(instrumentMap.getOrDefault(orig, orig), new ArrayList<>()));
+                }
+                noteblocksForInstrument = newNoteblocksForInstrument;
+            }
+
+            // Find fitting noteblocks with the least amount of adjustments required (to reduce tuning time)
             ArrayList<Note> capturedNotes = new ArrayList<>();
             for(Note note : song.uniqueNotes) {
                 ArrayList<BlockPos> availableBlocks = noteblocksForInstrument.get(note.instrument);
@@ -285,7 +295,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
 
                 HashMap<Block, Integer> missing = new HashMap<>();
                 for (Note note : missingNotes) {
-                    Block block = Note.INSTRUMENT_BLOCKS.get(note.instrument);
+                    Block block = Note.INSTRUMENT_BLOCKS.get(instrumentMap.getOrDefault(note.instrument, note.instrument));
                     Integer got = missing.get(block);
                     if (got == null) got = 0;
                     missing.put(block, got + 1);
