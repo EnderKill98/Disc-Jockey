@@ -60,6 +60,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private float availableInteracts = 8;
     private int tuneInitialUntunedBlocks = -1;
     private HashMap<BlockPos, Pair<Integer, Long>> notePredictions = new HashMap<>();
+    public boolean didSongReachEnd = false;
 
     public @NotNull HashMap<Instrument, Instrument> instrumentMap = new HashMap<>(); // Toy
     public synchronized void startPlaybackThread() {
@@ -90,6 +91,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         }
         if (running) stop();
         this.song = song;
+        Main.LOGGER.info("Song length: " + song.length + " and tempo " + song.tempo);
         Main.TICK_LISTENERS.add(this);
         if(this.playbackThread == null) startPlaybackThread();
         running = true;
@@ -101,6 +103,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         lastLookSentAt = -1L;
         lastSwingSentAt = -1L;
         missingInstrumentBlocks.clear();
+        didSongReachEnd = false;
     }
 
     public synchronized void stop() {
@@ -120,6 +123,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         stopPacketsUntil = -1L;
         lastLookSentAt = -1L;
         lastSwingSentAt = -1L;
+        didSongReachEnd = false; // Change after running stop() if actually ended cleanly
     }
 
     public synchronized void tickPlayback() {
@@ -191,6 +195,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                     index++;
                     if (index >= song.notes.length) {
                         stop();
+                        didSongReachEnd = true;
                         break;
                     }
                 } else {
@@ -198,11 +203,8 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 }
             }
 
-            // From NBS Format: The tempo of the song multiplied by 100 (for example, 1225 instead of 12.25). Measured in ticks per second.
-            float songSpeed = (song.tempo / 100.0F) / 20.0F; // 20 Ticks per second (temp / 100 = 20) would be 1x speed
-            float oneMsTo20TickFraction = 1F / 50F;
             long elapsedMs = previousPlaybackTickAt != -1L && lastPlaybackTickAt != -1L ? lastPlaybackTickAt - previousPlaybackTickAt : (16); // Assume 16ms if unknown
-            tick += ((float) elapsedMs) * oneMsTo20TickFraction * songSpeed * speed;
+            tick += song.millisecondsToTicks(elapsedMs) * speed;
         }
     }
 
@@ -417,5 +419,10 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     // The server limits interacts to 6 Blocks from Player Eye to Block Center
     private boolean canInteractWith(ClientPlayerEntity player, BlockPos blockPos) {
         return player.getEyePos().squaredDistanceTo(new Vec3d(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5)) <= 6.0*6.0;
+    }
+
+    public double getSongPositionInSeconds() {
+        if(song == null) return 0;
+        return song.ticksToMilliseconds(tick);
     }
 }
