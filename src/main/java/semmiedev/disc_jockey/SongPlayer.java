@@ -198,15 +198,11 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 }
             }
 
-            // This math has some unnecessary stuff (using bogus tps). Can be simplified a lot.
-            float tps = 1000.0F / 16.0F;
-            if (previousPlaybackTickAt != -1L && lastPlaybackTickAt != -1L) {
-                float inaccuracyFactor = (1000.0F / tps) / ((float) (lastPlaybackTickAt - previousPlaybackTickAt));
-                tps *= inaccuracyFactor;
-            }
-            tps /= speed;
-
-            tick += song.tempo / 100f / tps;
+            // From NBS Format: The tempo of the song multiplied by 100 (for example, 1225 instead of 12.25). Measured in ticks per second.
+            float songSpeed = (song.tempo / 100.0F) / 20.0F; // 20 Ticks per second (temp / 100 = 20) would be 1x speed
+            float oneMsTo20TickFraction = 1F / 50F;
+            long elapsedMs = previousPlaybackTickAt != -1L && lastPlaybackTickAt != -1L ? lastPlaybackTickAt - previousPlaybackTickAt : (16); // Assume 16ms if unknown
+            tick += ((float) elapsedMs) * oneMsTo20TickFraction * songSpeed * speed;
         }
     }
 
