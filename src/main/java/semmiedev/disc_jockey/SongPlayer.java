@@ -422,6 +422,6 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
 
     public double getSongPositionInSeconds() {
         if(song == null) return 0;
-        return song.ticksToMilliseconds(tick);
+        return song.ticksToMilliseconds(tick) / 1000;
     }
 }
