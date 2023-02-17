@@ -420,7 +420,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         return player.getEyePos().squaredDistanceTo(new Vec3d(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5)) <= 6.0*6.0;
     }
 
-    public double getSongPositionInSeconds() {
+    public double getSongElapsedSeconds() {
         if(song == null) return 0;
         return song.ticksToMilliseconds(tick) / 1000;
     }
