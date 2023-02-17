@@ -20,7 +20,6 @@ import net.minecraft.util.Pair;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import net.minecraft.world.GameMode;
-import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -33,7 +32,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     public Song song;
 
     private int index;
-    private float tick;
+    private double tick; // Aka song position
     private HashMap<Instrument, HashMap<Byte, BlockPos>> noteBlocks = null;
     private boolean tuned;
     private long lastPlaybackTickAt = -1L;
