@@ -61,6 +61,10 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private HashMap<BlockPos, Pair<Integer, Long>> notePredictions = new HashMap<>();
     public boolean didSongReachEnd = false;
 
+    public SongPlayer() {
+        Main.TICK_LISTENERS.add(this);
+    }
+
     public @NotNull HashMap<Instrument, Instrument> instrumentMap = new HashMap<>(); // Toy
     public synchronized void startPlaybackThread() {
         this.playbackThread = new Thread(() -> {
@@ -91,7 +95,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         if (running) stop();
         this.song = song;
         Main.LOGGER.info("Song length: " + song.length + " and tempo " + song.tempo);
-        Main.TICK_LISTENERS.add(this);
+        //Main.TICK_LISTENERS.add(this);
         if(this.playbackThread == null) startPlaybackThread();
         running = true;
         lastPlaybackTickAt = System.currentTimeMillis();
@@ -106,7 +110,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     }
 
     public synchronized void stop() {
-        MinecraftClient.getInstance().send(() -> Main.TICK_LISTENERS.remove(this));
+        //MinecraftClient.getInstance().send(() -> Main.TICK_LISTENERS.remove(this));
         stopPlaybackThread();
         running = false;
         index = 0;
@@ -202,17 +206,20 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 }
             }
 
-            long elapsedMs = previousPlaybackTickAt != -1L && lastPlaybackTickAt != -1L ? lastPlaybackTickAt - previousPlaybackTickAt : (16); // Assume 16ms if unknown
-            tick += song.millisecondsToTicks(elapsedMs) * speed;
+            if(running) { // Might not be running anymore (prevent small offset on song, even if that is not played anymore)
+                long elapsedMs = previousPlaybackTickAt != -1L && lastPlaybackTickAt != -1L ? lastPlaybackTickAt - previousPlaybackTickAt : (16); // Assume 16ms if unknown
+                tick += song.millisecondsToTicks(elapsedMs) * speed;
+            }
         }
     }
 
     // TODO: 6/2/2022 Play note blocks every song tick, instead of every tick. That way the song will sound better
-    //      11/1/2023 Playback now done in separate thread. Not ideal but better especiall when FPS are low.
+    //      11/1/2023 Playback now done in separate thread. Not ideal but better especially when FPS are low.
     @Override
     public void onStartTick(ClientWorld world) {
         MinecraftClient client = MinecraftClient.getInstance();
         if(world == null || client.world == null || client.player == null) return;
+        if(song == null || !running) return;
 
         // Clear outdated note predictions
         ArrayList<BlockPos> outdatedPredictions = new ArrayList<>();
