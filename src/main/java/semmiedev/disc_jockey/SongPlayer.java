@@ -147,8 +147,9 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         if(noteBlocks != null && tuned) {
             while (running) {
                 MinecraftClient client = MinecraftClient.getInstance();
-                GameMode gameMode = client.interactionManager.getCurrentGameMode();
-                if (!gameMode.isSurvivalLike()) {
+                GameMode gameMode = client.interactionManager == null ? null : client.interactionManager.getCurrentGameMode();
+                // In the best case, gameMode would only be queried in sync Ticks, no here
+                if (gameMode == null || !gameMode.isSurvivalLike()) {
                     client.inGameHud.getChatHud().addMessage(Text.translatable(Main.MOD_ID+".player.invalid_game_mode", gameMode.getTranslatableName()).formatted(Formatting.RED));
                     stop();
                     return;
