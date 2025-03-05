@@ -43,7 +43,6 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private long last100MsSpanAt = -1L;
     private int last100MsSpanEstimatedPackets = 0;
     // At how many packets/100ms should the player just reduce / stop sending packets for a while
-    final private int last100MsReducePacketsAfter = 300 / 10, last100MsStopPacketsAfter = 450 / 10;
     // If higher than current millis, don't send any packets of this kind (temp disable)
     private long reducePacketsUntil = -1L, stopPacketsUntil = -1L;
 
@@ -155,6 +154,9 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         }
         if(noteBlocks != null && tuned) {
             if(pausePlaybackUntil != -1L && System.currentTimeMillis() <= pausePlaybackUntil) return;
+            final int last100MsReducePacketsAfter = Main.config.playbackPacketRatelimit.getReducePacketsPer100Millis();
+            final int last100MsStopPacketsAfter = Main.config.playbackPacketRatelimit.getMaxPacketsPer100Millis();
+
             while (running) {
                 MinecraftClient client = MinecraftClient.getInstance();
                 GameMode gameMode = client.interactionManager == null ? null : client.interactionManager.getCurrentGameMode();
@@ -370,12 +372,27 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                     ping = playerListEntry.getLatency();
             }
 
-            if(lastInteractAt != -1L) {
-                // Paper allows 8 interacts per 300 ms (actually 9 it turns out, but lets keep it a bit lower anyway)
-                availableInteracts += ((System.currentTimeMillis() - lastInteractAt) / (310.0f / 8.0f));
-                availableInteracts = Math.min(8f, Math.max(0f, availableInteracts));
-            }else {
-                availableInteracts = 8f;
+            if(ping <= 0) {
+                // Assume server did respond with a placeholder ping
+                ping = 150; // Assume some bad-ish ping.
+            }
+
+            switch(Main.config.tuningSpeed) {
+                case Snail -> availableInteracts = Math.clamp(availableInteracts + 0.5f, 0f, 1f);
+                case Safe -> availableInteracts = 1;
+                case Spigot -> {
+                    if(lastInteractAt == -1L) {
+                        availableInteracts = 9f;
+                    }else {
+                        // Spigot (and Paper + forks) allow 9 interacts per 300 ms
+                        availableInteracts += ((System.currentTimeMillis() - lastInteractAt) / (310.0f / 9.0f));
+                        availableInteracts = Math.min(9f, Math.max(0f, availableInteracts));
+                    }
+                }
+                case Flash -> availableInteracts = Integer.MAX_VALUE;
+            }
+
+            if(lastInteractAt == -1L) {
                 lastInteractAt = System.currentTimeMillis();
             }
 
