@@ -143,7 +143,7 @@ public class DiscJockeyScreen extends Screen {
 
         if (shouldFilter) {
             shouldFilter = false;
-            songListWidget.setScrollAmount(0);
+            songListWidget.setScrollY(0);
             songListWidget.children().clear();
             boolean empty = query.isEmpty();
             int favoriteIndex = 0;
@@ -160,7 +160,7 @@ public class DiscJockeyScreen extends Screen {
     }
 
     @Override
-    public void filesDragged(List<Path> paths) {
+    public void onFilesDropped(List<Path> paths) {
         String string = paths.stream().map(Path::getFileName).map(Path::toString).collect(Collectors.joining(", "));
         if (string.length() > 300) string = string.substring(0, 300)+"...";
 

@@ -5,6 +5,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.EntryListWidget;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 import semmiedev.disc_jockey.Main;
@@ -70,7 +71,7 @@ public class SongListWidget extends EntryListWidget<SongListWidget.SongEntry> {
             context.drawCenteredTextWithShadow(client.textRenderer, song.displayName, x + entryWidth / 2, y + 5, selected ? 0xFFFFFF : 0x808080);
 
             RenderSystem.setShaderTexture(0, ICONS);
-            context.drawTexture(ICONS, x + 2, y + 2, (favorite ? 26 : 0) + (isOverFavoriteButton(mouseX, mouseY) ? 13 : 0), 0, 13, 12, 52, 12);
+            context.drawTexture(RenderLayer::getGuiTextured, ICONS, x + 2, y + 2, (favorite ? 26 : 0) + (isOverFavoriteButton(mouseX, mouseY) ? 13 : 0), 0, 13, 12, 52, 12);
         }
 
         @Override
