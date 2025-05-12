@@ -2,13 +2,26 @@ package semmiedev.disc_jockey;
 
 public class RateLimiter {
     // Used to check and enforce packet rate limits to not get kicked
-    private long last100MsSpanAt = Util.TIMESTAMP_UNINITIALIZED;
-    private int last100MsSpanEstimatedPackets = 0;
+    private long last100MsSpanAt;
+    private int last100MsSpanEstimatedPackets;
     // At how many packets/100ms should the player just reduce / stop sending packets for a while
-    private long reducePacketsUntil = Util.TIMESTAMP_UNINITIALIZED, stopPacketsUntil = Util.TIMESTAMP_UNINITIALIZED;
+    private long reducePacketsUntil, stopPacketsUntil;
 
     // Use to limit swings and look to only each tick. More will not be visually visible anyway due to interpolation
-    private long lastLookSentAt = Util.TIMESTAMP_UNINITIALIZED, lastSwingSentAt = Util.TIMESTAMP_UNINITIALIZED;
+    private long lastLookSentAt, lastSwingSentAt;
+
+    public RateLimiter() {
+        reset();
+    }
+
+    public void reset() {
+        last100MsSpanAt = Util.TIMESTAMP_UNINITIALIZED;
+        last100MsSpanEstimatedPackets = 0;
+        reducePacketsUntil = Util.TIMESTAMP_UNINITIALIZED;
+        stopPacketsUntil = Util.TIMESTAMP_UNINITIALIZED;
+        lastLookSentAt = Util.TIMESTAMP_UNINITIALIZED;
+        lastSwingSentAt = Util.TIMESTAMP_UNINITIALIZED;
+    }
 
     public int getMaxCosmeticPacketsPer100ms() {
         return Main.config.playbackPacketRatelimit.getReducePacketsPer100Millis();

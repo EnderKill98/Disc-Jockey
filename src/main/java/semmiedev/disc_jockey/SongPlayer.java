@@ -28,7 +28,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     public float speed = 1.0f;
     public boolean didSongReachEnd = false;
     public boolean loopSong = false;
-    private RateLimiter rateLimiter = null;
+    private final RateLimiter rateLimiter = new RateLimiter();
     public final Tuner tuner = new Tuner();
 
     public SongPlayer() {
@@ -69,7 +69,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         //Main.LOGGER.info("Song length: " + song.length + " and tempo " + song.tempo);
         if(this.playbackThread == null) startPlaybackThread();
         running = true;
-        rateLimiter = null; // Reset state
+        rateLimiter.reset();
         tuner.reset();
         didSongReachEnd = false;
     }
@@ -79,8 +79,8 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         running = false;
         index = 0;
         tick = 0;
+        rateLimiter.reset();
         tuner.reset();
-        rateLimiter = null; // Reset state
         didSongReachEnd = false; // Change after running stop() if actually ended cleanly
     }
 
@@ -90,13 +90,11 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     public synchronized void tickPlayback() {
         if (!running) {
             lastPlaybackTickAt = -1L;
-            rateLimiter = null;
+            rateLimiter.reset();
             return;
         }
         long previousPlaybackTickAt = lastPlaybackTickAt;
         lastPlaybackTickAt = System.currentTimeMillis();
-        if(rateLimiter == null)
-            rateLimiter = new RateLimiter();
         rateLimiter.tick();
 
         if(!tuner.isTuned()) return;
