@@ -20,7 +20,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
 
     private int index;
     private double tick; // Aka song position
-    private long lastPlaybackTickAt = -1L;
+    private long lastPlaybackTickAt = Util.TIMESTAMP_UNINITIALIZED;
     // The thread executing the tickPlayback method
     private Thread playbackThread = null;
     public long playbackLoopDelay = 5;
@@ -89,12 +89,12 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
      */
     public synchronized void tickPlayback() {
         if (!running) {
-            lastPlaybackTickAt = -1L;
+            lastPlaybackTickAt = Util.TIMESTAMP_UNINITIALIZED;
             rateLimiter.reset();
             return;
         }
         long previousPlaybackTickAt = lastPlaybackTickAt;
-        lastPlaybackTickAt = System.currentTimeMillis();
+        lastPlaybackTickAt = Util.now();
         rateLimiter.tick();
 
         if(!tuner.isTuned()) return;
@@ -156,7 +156,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         }
 
         if(running) { // Might not be running anymore (prevent small offset on song, even if that is not played anymore)
-            long elapsedMs = previousPlaybackTickAt != -1L && lastPlaybackTickAt != -1L ? lastPlaybackTickAt - previousPlaybackTickAt : (16); // Assume 16ms if unknown
+            long elapsedMs = previousPlaybackTickAt != -1L && lastPlaybackTickAt != -1L ? lastPlaybackTickAt - previousPlaybackTickAt : 16; // Assume 16ms if unknown
             tick += song.millisecondsToTicks(elapsedMs) * speed;
         }
     }
