@@ -1,32 +1,17 @@
 package semmiedev.disc_jockey;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.enums.NoteBlockInstrument;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.hud.ChatHud;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
-import net.minecraft.state.property.Properties;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
-import net.minecraft.util.Pair;
-import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import net.minecraft.world.GameMode;
-import org.apache.commons.lang3.NotImplementedException;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private static boolean warned;
@@ -40,11 +25,11 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private Thread playbackThread = null;
     public long playbackLoopDelay = 5;
     // Just for external debugging purposes
-    public float speed = 1.0f; // Toy
+    public float speed = 1.0f;
     public boolean didSongReachEnd = false;
     public boolean loopSong = false;
     private RateLimiter rateLimiter = null;
-    public final NoteTuner tuner = new NoteTuner();
+    public final Tuner tuner = new Tuner();
 
     public SongPlayer() {
         Main.TICK_LISTENERS.add(this);
@@ -84,7 +69,6 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         if (running) stop();
         this.song = song;
         //Main.LOGGER.info("Song length: " + song.length + " and tempo " + song.tempo);
-        //Main.TICK_LISTENERS.add(this);
         if(this.playbackThread == null) startPlaybackThread();
         running = true;
         rateLimiter = null; // Reset state
@@ -93,7 +77,6 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     }
 
     public synchronized void stop() {
-        //MinecraftClient.getInstance().send(() -> Main.TICK_LISTENERS.remove(this));
         stopPlaybackThread();
         running = false;
         index = 0;
@@ -128,7 +111,6 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
             }
 
             long note = song.notes[index];
-            final long now = System.currentTimeMillis();
             if ((short)note <= Math.round(tick)) {
                 @Nullable BlockPos blockPos = tuner.getNoteBlocks().get(Note.INSTRUMENTS[(byte)(note >> Note.INSTRUMENT_SHIFT)]).get((byte)(note >> Note.NOTE_SHIFT));
                 if(blockPos == null) {
@@ -190,13 +172,12 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
 
         tuner.cleanup(); // Housekeeping
 
-        // Select song once
+        // Select song
         if (!tuner.isSongSelected()) {
             if (!tuner.selectSong(client, song)) {
                 if(!tuner.getMissingInstrumentBlocks().isEmpty()) {
                     ChatHud chatHud = MinecraftClient.getInstance().inGameHud.getChatHud();
                     chatHud.addMessage(Text.translatable(Main.MOD_ID + ".player.invalid_note_blocks").formatted(Formatting.RED));
-
                     tuner.getMissingInstrumentBlocks().forEach((block, integer) -> chatHud.addMessage(Text.literal(block.getName().getString() + " × " + integer).formatted(Formatting.RED)));
                     stop();
                     return;
@@ -213,8 +194,8 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
 
         // Tune
         if (!tuner.isTuned()) {
-            NoteTuner.TuningFail tuningFail = tuner.tickTuning(client);
-            if (tuningFail == NoteTuner.TuningFail.MovedTooFarAway) {
+            Tuner.TuningFail tuningFail = tuner.tickTuning(client);
+            if (tuningFail == Tuner.TuningFail.MovedTooFarAway) {
                 stop();
                 client.inGameHud.getChatHud().addMessage(Text.translatable(Main.MOD_ID + ".player.too_far").formatted(Formatting.RED));
                 return;

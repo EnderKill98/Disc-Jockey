@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class NoteTuner {
+public class Tuner {
 
     private HashMap<NoteBlockInstrument, HashMap<Byte, BlockPos>> noteBlocks = null;
     private long tunedAfter = Util.TIMESTAMP_UNINITIALIZED;
