@@ -38,17 +38,6 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     private HashMap<NoteBlockInstrument, HashMap<Byte, BlockPos>> noteBlocks = null;
     public boolean tuned;
     private long lastPlaybackTickAt = -1L;
-
-    // Used to check and enforce packet rate limits to not get kicked
-    private long last100MsSpanAt = -1L;
-    private int last100MsSpanEstimatedPackets = 0;
-    // At how many packets/100ms should the player just reduce / stop sending packets for a while
-    // If higher than current millis, don't send any packets of this kind (temp disable)
-    private long reducePacketsUntil = -1L, stopPacketsUntil = -1L;
-
-    // Use to limit swings and look to only each tick. More will not be visually visible anyway due to interpolation
-    private long lastLookSentAt = -1L, lastSwingSentAt = -1L;
-
     // The thread executing the tickPlayback method
     private Thread playbackThread = null;
     public long playbackLoopDelay = 5;
@@ -63,6 +52,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
     public boolean didSongReachEnd = false;
     public boolean loopSong = false;
     private long pausePlaybackUntil = -1L; // Set after tuning, if configured
+    private RateLimiter rateLimiter = null;
 
     public SongPlayer() {
         Main.TICK_LISTENERS.add(this);
@@ -106,13 +96,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         //Main.TICK_LISTENERS.add(this);
         if(this.playbackThread == null) startPlaybackThread();
         running = true;
-        lastPlaybackTickAt = System.currentTimeMillis();
-        last100MsSpanAt = System.currentTimeMillis();
-        last100MsSpanEstimatedPackets = 0;
-        reducePacketsUntil = -1L;
-        stopPacketsUntil = -1L;
-        lastLookSentAt = -1L;
-        lastSwingSentAt = -1L;
+        rateLimiter = null; // Reset state
         missingInstrumentBlocks.clear();
         didSongReachEnd = false;
     }
@@ -127,35 +111,24 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         notePredictions.clear();
         tuned = false;
         tuneInitialUntunedBlocks = -1;
-        lastPlaybackTickAt = -1L;
-        last100MsSpanAt = -1L;
-        last100MsSpanEstimatedPackets = 0;
-        reducePacketsUntil = -1L;
-        stopPacketsUntil = -1L;
-        lastLookSentAt = -1L;
-        lastSwingSentAt = -1L;
+        rateLimiter = null; // Reset state
         didSongReachEnd = false; // Change after running stop() if actually ended cleanly
     }
 
     public synchronized void tickPlayback() {
         if (!running) {
             lastPlaybackTickAt = -1L;
-            last100MsSpanAt = -1L;
+            rateLimiter = null;
             return;
         }
         long previousPlaybackTickAt = lastPlaybackTickAt;
         lastPlaybackTickAt = System.currentTimeMillis();
-        if(last100MsSpanAt != -1L && System.currentTimeMillis() - last100MsSpanAt >= 100) {
-            last100MsSpanEstimatedPackets = 0;
-            last100MsSpanAt = System.currentTimeMillis();
-        }else if (last100MsSpanAt == -1L) {
-            last100MsSpanAt = System.currentTimeMillis();
-            last100MsSpanEstimatedPackets = 0;
-        }
+        if(rateLimiter == null)
+            rateLimiter = new RateLimiter();
+        rateLimiter.tick();
+
         if(noteBlocks != null && tuned) {
             if(pausePlaybackUntil != -1L && System.currentTimeMillis() <= pausePlaybackUntil) return;
-            final int last100MsReducePacketsAfter = Main.config.playbackPacketRatelimit.getReducePacketsPer100Millis();
-            final int last100MsStopPacketsAfter = Main.config.playbackPacketRatelimit.getMaxPacketsPer100Millis();
 
             while (running) {
                 MinecraftClient client = MinecraftClient.getInstance();
@@ -182,35 +155,22 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                         return;
                     }
                     Vec3d unit = Vec3d.ofCenter(blockPos, 0.5).subtract(client.player.getEyePos()).normalize();
-                    if((lastLookSentAt == -1L || now - lastLookSentAt >= 50) && last100MsSpanEstimatedPackets < last100MsReducePacketsAfter && (reducePacketsUntil == -1L || reducePacketsUntil < now)) {
-                        client.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(MathHelper.wrapDegrees((float) (MathHelper.atan2(unit.z, unit.x) * 57.2957763671875) - 90.0f), MathHelper.wrapDegrees((float) (-(MathHelper.atan2(unit.y, Math.sqrt(unit.x * unit.x + unit.z * unit.z)) * 57.2957763671875))), client.player.isOnGround(), client.player.horizontalCollision));
-                        last100MsSpanEstimatedPackets++;
-                        lastLookSentAt = now;
-                    }else if(last100MsSpanEstimatedPackets >= last100MsReducePacketsAfter){
-                        reducePacketsUntil = Math.max(reducePacketsUntil, now + 500);
+                    if(rateLimiter.canSendLookPacket()) {
+                        client.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(MathHelper.wrapDegrees((float) (MathHelper.atan2(unit.z, unit.x) * 57.2957763671875) - 90.0f), MathHelper.wrapDegrees((float) (-(MathHelper.atan2(unit.y, Math.sqrt(unit.x * unit.x + unit.z * unit.z)) * 57.2957763671875))), client.player.isOnGround(), client.player.horizontalCollision));                        rateLimiter.onLookPacketSent();
+                        rateLimiter.onLookPacketSent();
                     }
-                    if(last100MsSpanEstimatedPackets < last100MsStopPacketsAfter && (stopPacketsUntil == -1L || stopPacketsUntil < now)) {
+                    if(rateLimiter.canSendAnyPacket()) {
                         // TODO: 5/30/2022 Check if the block needs tuning
-                        //client.interactionManager.attackBlock(blockPos, Direction.UP);
                         client.player.networkHandler.sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, blockPos, Direction.UP, 0));
-                        last100MsSpanEstimatedPackets++;
-                    }else if(last100MsSpanEstimatedPackets >= last100MsStopPacketsAfter) {
-                        Main.LOGGER.info("Stopping all packets for a bit!");
-                        stopPacketsUntil = Math.max(stopPacketsUntil, now + 250);
-                        reducePacketsUntil = Math.max(reducePacketsUntil, now + 10000);
+                        rateLimiter.onPacketSent();
                     }
-                    if(last100MsSpanEstimatedPackets < last100MsReducePacketsAfter && (reducePacketsUntil == -1L || reducePacketsUntil < now)) {
+                    if(rateLimiter.canSendCosmeticPacket()) {
                         client.player.networkHandler.sendPacket(new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.ABORT_DESTROY_BLOCK, blockPos, Direction.UP, 0));
-                        last100MsSpanEstimatedPackets++;
-                    }else if(last100MsSpanEstimatedPackets >= last100MsReducePacketsAfter){
-                        reducePacketsUntil = Math.max(reducePacketsUntil, now + 500);
+                        rateLimiter.onPacketSent();
                     }
-                    if((lastSwingSentAt == -1L || now - lastSwingSentAt >= 50) &&last100MsSpanEstimatedPackets < last100MsReducePacketsAfter && (reducePacketsUntil == -1L || reducePacketsUntil < now)) {
+                    if(rateLimiter.canSendSwingPacket()) {
                         client.executeSync(() -> client.player.swingHand(Hand.MAIN_HAND));
-                        lastSwingSentAt = now;
-                        last100MsSpanEstimatedPackets++;
-                    }else if(last100MsSpanEstimatedPackets  >= last100MsReducePacketsAfter){
-                        reducePacketsUntil = Math.max(reducePacketsUntil, now + 500);
+                        rateLimiter.onSwingPacketSent();
                     }
 
                     index++;
