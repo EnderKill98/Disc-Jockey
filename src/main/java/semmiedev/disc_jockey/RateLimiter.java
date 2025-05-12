@@ -66,7 +66,7 @@ public class RateLimiter {
             reducePacketsUntil = Math.max(reducePacketsUntil, Util.now() + 500);
         }
         if(last100MsSpanEstimatedPackets >= getMaxPacketsPer100ms()) {
-            Main.LOGGER.info("Stopping all packets for a bit!");
+            Main.LOGGER.warn("Stopping all packets for a bit!");
             final long now = Util.now();
             stopPacketsUntil = Math.max(stopPacketsUntil, now + 250);
             reducePacketsUntil = Math.max(reducePacketsUntil, now + 10000);
