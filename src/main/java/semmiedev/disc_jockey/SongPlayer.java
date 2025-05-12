@@ -138,7 +138,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 }
                 if (!Util.canInteractWith(client.player, blockPos)) {
                     stop();
-                    client.inGameHud.getChatHud().addMessage(Text.translatable(Main.MOD_ID+".player.to_far").formatted(Formatting.RED));
+                    client.inGameHud.getChatHud().addMessage(Text.translatable(Main.MOD_ID+".player.too_far").formatted(Formatting.RED));
                     return;
                 }
                 Vec3d unit = Vec3d.ofCenter(blockPos, 0.5).subtract(client.player.getEyePos()).normalize();
@@ -216,7 +216,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
             NoteTuner.TuningFail tuningFail = tuner.tickTuning(client);
             if (tuningFail == NoteTuner.TuningFail.MovedTooFarAway) {
                 stop();
-                client.inGameHud.getChatHud().addMessage(Text.translatable(Main.MOD_ID + ".player.to_far").formatted(Formatting.RED));
+                client.inGameHud.getChatHud().addMessage(Text.translatable(Main.MOD_ID + ".player.too_far").formatted(Formatting.RED));
                 return;
             } else if(tuningFail != null) {
                 stop();

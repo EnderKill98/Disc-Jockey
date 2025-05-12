@@ -11,7 +11,7 @@
   "disc_jockey.screen.drop_confirm": "Do you want to add the following songs to Disc Jockey?",
   "disc_jockey.player.invalid_note_blocks": "The Note Blocks near you are not in the correct configuration. Missing:",
   "disc_jockey.player.invalid_game_mode": "You can't play in %s",
-  "disc_jockey.player.to_far": "You went to far away",
+  "disc_jockey.player.too_far": "You went to far away",
   "disc_jockey.player.tuning_fail_other": "Tuning failed: %s",
   "disc_jockey.player.selectsong_fail_unknown": "Selecting your song failed somehow!",
   "disc_jockey.still_loading": "The songs are still loading",
