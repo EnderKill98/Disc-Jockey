@@ -87,8 +87,7 @@ public class DiscjockeyCommand {
                                 .then(argument("speed", FloatArgumentType.floatArg(0.0001F, 15.0F))
                                         .suggests((context, builder) -> CommandSource.suggestMatching(Arrays.asList("0.5", "0.75", "1", "1.25", "1.5", "2"), builder))
                                         .executes(context -> {
-                                            float newSpeed = FloatArgumentType.getFloat(context, "speed");
-                                            Main.SONG_PLAYER.speed = newSpeed;
+                                            Main.SONG_PLAYER.speed = FloatArgumentType.getFloat(context, "speed");
                                             context.getSource().sendFeedback(Text.translatable(Main.MOD_ID + ".speed_changed", Main.SONG_PLAYER.speed));
                                             return 0;
                                         })
@@ -198,9 +197,7 @@ public class DiscjockeyCommand {
 
                                             StringBuilder maps = new StringBuilder();
                                             for(Map.Entry<NoteBlockInstrument, NoteBlockInstrument> entry : Main.SONG_PLAYER.tuner.instrumentMap.entrySet()) {
-                                                if(maps.length() > 0) {
-                                                    maps.append(", ");
-                                                }
+                                                if(!maps.isEmpty()) maps.append(", ");
                                                 maps
                                                         .append(entry.getKey().toString().toLowerCase())
                                                         .append("->")

@@ -47,9 +47,7 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
                 try {
                     // Accuracy doesn't really matter at this precision imo
                     Thread.sleep(playbackLoopDelay);
-                }catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+                }catch (InterruptedException ignored) {}
                 tickPlayback();
             }
         });
@@ -86,6 +84,9 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         didSongReachEnd = false; // Change after running stop() if actually ended cleanly
     }
 
+    /**
+     * Can be run from both a separate thread or on minecraft ticks. Decided by Main.config.disableAsyncPlayback
+     */
     public synchronized void tickPlayback() {
         if (!running) {
             lastPlaybackTickAt = -1L;
@@ -162,8 +163,6 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         }
     }
 
-    // TODO: 6/2/2022 Play note blocks every song tick, instead of every tick. That way the song will sound better
-    //      11/1/2023 Playback now done in separate thread. Not ideal but better especially when FPS are low.
     @Override
     public void onStartTick(ClientWorld world) {
         MinecraftClient client = MinecraftClient.getInstance();
