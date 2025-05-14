@@ -86,7 +86,7 @@ public class DiscjockeyCommand {
                                 .executes(context -> {
                                     if (Main.SONG_PLAYER.running) {
                                         Main.SONG_PLAYER.stop();
-                                        context.getSource().sendFeedback(Text.translatable(Main.MOD_ID+".stopped_playing", Main.SONG_PLAYER.song));
+                                        context.getSource().sendFeedback(Text.translatable(Main.MOD_ID+".stopped_playing", Main.SONG_PLAYER.song.displayName));
                                         return 1;
                                     }
                                     context.getSource().sendError(Text.translatable(Main.MOD_ID+".not_playing"));
