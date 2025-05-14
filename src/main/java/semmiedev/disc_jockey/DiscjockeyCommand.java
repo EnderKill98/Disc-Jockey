@@ -12,10 +12,7 @@ import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 import semmiedev.disc_jockey.gui.screen.DiscJockeyScreen;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
@@ -71,6 +68,19 @@ public class DiscjockeyCommand {
                                             return 0;
                                         })
                                 )
+                        )
+                        .then(literal("random")
+                                .executes(context -> {
+                                    if (isLoading(context)) return 0;
+                                    if(SongLoader.SONGS.isEmpty()) {
+                                        context.getSource().sendError(Text.translatable(Main.MOD_ID + ".no_songs"));
+                                        return 0;
+                                    }
+
+                                    Song song = SongLoader.SONGS.get(new Random().nextInt(SongLoader.SONGS.size()));
+                                    Main.SONG_PLAYER.start(song);
+                                    return 0;
+                                })
                         )
                         .then(literal("stop")
                                 .executes(context -> {
