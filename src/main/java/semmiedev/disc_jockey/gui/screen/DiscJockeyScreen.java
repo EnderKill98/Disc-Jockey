@@ -175,17 +175,6 @@ public class DiscJockeyScreen extends Screen {
         addDrawableChild(configButton);
     }
 
-    private static String padZeroes(int number, int length) {
-        StringBuilder builder = new StringBuilder("" + number);
-        while(builder.length() < length)
-            builder.insert(0, '0');
-        return builder.toString();
-    }
-
-    private static String formatTimestamp(int seconds) {
-        return padZeroes(seconds / 60, 2) + ":" + padZeroes(seconds % 60, 2);
-    }
-
     private static Text getPlaybackStateText() {
         boolean running = Main.SONG_PLAYER.running;
         boolean tuned = Main.SONG_PLAYER.tuner.isTuned();
