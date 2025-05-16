@@ -215,6 +215,18 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
         }
     }
 
+    public void setSongElapsedSeconds(double seconds) {
+        tick = song.millisecondsToTicks((long) seconds * 1000);
+        index = 0;
+        for(int i = 0; i < song.notes.length; i++) {
+            long note = song.notes[i];
+            if((short) note >= Math.round(tick)) {
+                index = i;
+                //Main.LOGGER.info("Seconds: " + seconds + ", Tick: " + tick + ", Index: " + index);
+                break;
+            }
+        }
+    }
 
     public double getSongElapsedSeconds() {
         if(song == null) return 0;

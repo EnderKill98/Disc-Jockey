@@ -10,6 +10,7 @@ import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 import semmiedev.disc_jockey.Main;
 import semmiedev.disc_jockey.Song;
+import semmiedev.disc_jockey.Util;
 
 public class SongListWidget extends EntryListWidget<SongListWidget.SongEntry> {
 
@@ -24,7 +25,7 @@ public class SongListWidget extends EntryListWidget<SongListWidget.SongEntry> {
 
     @Override
     protected int getScrollbarX() {
-        return width - 12;
+        return getX() + width - 12;
     }
 
     @Override
@@ -49,6 +50,7 @@ public class SongListWidget extends EntryListWidget<SongListWidget.SongEntry> {
 
         public boolean selected, favorite;
         public SongListWidget songListWidget;
+        private long lastClickedAt = Util.TIMESTAMP_UNINITIALIZED;
 
         private final MinecraftClient client = MinecraftClient.getInstance();
 
@@ -85,7 +87,13 @@ public class SongListWidget extends EntryListWidget<SongListWidget.SongEntry> {
                 }
                 return true;
             }
-            songListWidget.setSelected(this);
+            if(songListWidget.getSelectedOrNull() == this && lastClickedAt != -1L && Util.now() - lastClickedAt <= 350) {
+                // Double click = start song
+                Main.SONG_PLAYER.start(this.song);
+            }else {
+                songListWidget.setSelected(this);
+                lastClickedAt = Util.now();
+            }
             return true;
         }
 
