@@ -143,10 +143,11 @@ public class DiscJockeyScreen extends Screen {
         // TODO: 6/2/2022 Add a reload button
 
         // Player:
-        songState = new TextWidget(10, 32, width / 2 - 20, 20, Text.literal("..."), getTextRenderer());
+        songState = new TextWidget(10, 32, width / 2 - 20, 20, Text.empty(), getTextRenderer());
         addDrawableChild(songState);
-        songTitle = new TextWidget(10, 32 + 20, width / 2 - 20, 20, Text.literal("Song Title here"), getTextRenderer());
+        songTitle = new TextWidget(10, 32 + 20, width / 2 - 20, 20, Text.empty(), getTextRenderer());
         songTitle.alignLeft();
+        addDrawableChild(songTitle);
         timeBar = new SongTimeSliderWidget(10, 32 + 20 + 20, width / 2 - 20, 30);
         addDrawableChild(timeBar);
         playPauseButton = CyclingButtonWidget.<Boolean>builder((value) -> Text.literal(value ? "⏸" : "▶"))
