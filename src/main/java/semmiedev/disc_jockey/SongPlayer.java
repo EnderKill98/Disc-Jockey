@@ -65,6 +65,8 @@ public class SongPlayer implements ClientTickEvents.StartWorldTick {
             return;
         }
         if (running) stop();
+        tick = 0;
+        index = 0;
         this.song = song;
         //Main.LOGGER.info("Song length: " + song.length + " and tempo " + song.tempo);
         if(this.playbackThread == null) startPlaybackThread();
