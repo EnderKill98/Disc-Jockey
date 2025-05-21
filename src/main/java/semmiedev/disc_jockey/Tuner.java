@@ -3,11 +3,15 @@ package semmiedev.disc_jockey;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.NoteBlock;
 import net.minecraft.block.enums.NoteBlockInstrument;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.item.ItemPlacementContext;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Pair;
@@ -16,6 +20,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldView;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -118,10 +124,10 @@ public class Tuner {
                         if (!Util.canInteractWith(player, blockPos))
                             continue;
                         BlockState blockState = world.getBlockState(blockPos);
-                        if (!blockState.isOf(Blocks.NOTE_BLOCK) || !world.isAir(blockPos.up()))
-                            continue;
+                        NoteBlockInstrument blockInstrument = getInstrument(client, blockPos, blockState);
+                        if(blockInstrument == null) continue; // Not a noteblock or not playable due to obstruction
 
-                        if (blockState.get(Properties.INSTRUMENT) == instrument)
+                        if (blockInstrument == instrument)
                             noteblocksForInstrument.get(instrument).add(blockPos);
                     }
                 }
@@ -195,6 +201,29 @@ public class Tuner {
             return true;
         }else {
             return false;
+        }
+    }
+
+    private @Nullable NoteBlockInstrument getInstrument(MinecraftClient client, BlockPos pos, BlockState state) {
+        if(!(state.getBlock() instanceof NoteBlock noteBlock)) return null; // Not a noteblock
+
+        if(!Main.config.instrumentDetectionWorkaround) {
+            NoteBlockInstrument instrument = state.get(Properties.INSTRUMENT);
+            if(!instrument.isNotBaseBlock() /*Instrument block is below*/ && !client.world.isAir(pos.up())) return null; // Blocked off from playing
+            return instrument;
+        }
+
+        // Workaround for instrument detection:
+
+        // Pretty much NoteBlock.getStateWithInstrument, but ignoring blockstates and using default instead:
+        NoteBlockInstrument aboveBlockInstrument = client.world.getBlockState(pos.up()).getBlock().getDefaultState().getInstrument();
+        if (aboveBlockInstrument.isNotBaseBlock()) {
+            return aboveBlockInstrument;
+        } else {
+            NoteBlockInstrument belowBlockInstrument = client.world.getBlockState(pos.down()).getBlock().getDefaultState().getInstrument();
+            if(belowBlockInstrument.isNotBaseBlock()) return NoteBlockInstrument.HARP;
+            if(!client.world.isAir(pos.up())) return null; // Noteblock can't be played
+            return belowBlockInstrument;
         }
     }
 

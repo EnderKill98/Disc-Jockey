@@ -100,6 +100,9 @@ public class Config implements ConfigData {
     @ConfigEntry.Gui.Tooltip(count = 1)
     public float delayPlaybackStartBySecs = 0.0f;
 
+    @ConfigEntry.Gui.Tooltip(count = 3) public boolean instrumentDetectionWorkaround = true;
+
     @ConfigEntry.Gui.Excluded
     public ArrayList<String> favorites = new ArrayList<>();
+
 }

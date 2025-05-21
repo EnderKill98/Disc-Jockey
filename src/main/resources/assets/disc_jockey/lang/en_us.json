@@ -74,5 +74,9 @@
   "text.autoconfig.disc_jockey.option.playbackPacketRatelimit.@Tooltip[2]": "Vanilla/Fabric server usually have non, but setting No Limit is rarely ever useful anyway.",
   "text.autoconfig.disc_jockey.option.playbackPacketRatelimit.@Tooltip[3]": "Servers with AntiCheat might require you to use a lower setting (but make sure you're allowed to use this mod there at all).",
   "text.autoconfig.disc_jockey.option.delayPlaybackStartBySecs": "Delay playback by (seconds)",
-  "text.autoconfig.disc_jockey.option.delayPlaybackStartBySecs.@Tooltip": "Delays playback for specified seconds, after tuning finished, if any (e.g. 0.5 for half a second delay)."
+  "text.autoconfig.disc_jockey.option.delayPlaybackStartBySecs.@Tooltip": "Delays playback for specified seconds, after tuning finished, if any (e.g. 0.5 for half a second delay).",
+  "text.autoconfig.disc_jockey.option.instrumentDetectionWorkaround": "Instrument Detection Workaround",
+  "text.autoconfig.disc_jockey.option.instrumentDetectionWorkaround.@Tooltip[0]": "There have been some instances where a noteblock does not properly detect the instrument it's supposed to be.",
+  "text.autoconfig.disc_jockey.option.instrumentDetectionWorkaround.@Tooltip[1]": "This can cause Disc Jockey to falsely report not finding some instruments. However this will probably",
+  "text.autoconfig.disc_jockey.option.instrumentDetectionWorkaround.@Tooltip[2]": "break custom block plugins (like Nexo) that wanna alter instruments."
 }
