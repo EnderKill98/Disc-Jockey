@@ -1,11 +1,11 @@
 package semmiedev.disc_jockey.gui.screen;
 
 import me.shedaniel.autoconfig.AutoConfig;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.*;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
@@ -198,7 +198,7 @@ public class DiscJockeyScreen extends Screen {
     @Override
     public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {
         super.renderBackground(context, mouseX, mouseY, delta);
-        context.drawTexture(RenderLayer::getGuiTextured, EntryListWidget.INWORLD_MENU_LIST_BACKGROUND_TEXTURE, 5, 32, width / 2, 32 + 20 + 20 + 30 + 5 + 20 + 5, this.width / 2 - 10, 20 + 20 + 30 + 5 + 20 + 5, 32, 32);
+        context.drawTexture(RenderPipelines.GUI_TEXTURED, EntryListWidget.INWORLD_MENU_LIST_BACKGROUND_TEXTURE, 5, 32, width / 2, 32 + 20 + 20 + 30 + 5 + 20 + 5, this.width / 2 - 10, 20 + 20 + 30 + 5 + 20 + 5, 32, 32);
     }
 
     @Override
