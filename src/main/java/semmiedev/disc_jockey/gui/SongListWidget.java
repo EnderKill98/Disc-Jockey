@@ -1,6 +1,7 @@
 package semmiedev.disc_jockey.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.GpuTexture;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
@@ -72,7 +73,6 @@ public class SongListWidget extends EntryListWidget<SongListWidget.SongEntry> {
 
             context.drawCenteredTextWithShadow(client.textRenderer, song.displayName, x + entryWidth / 2, y + 5, selected ? 0xFFFFFF : 0x808080);
 
-            RenderSystem.setShaderTexture(0, ICONS);
             context.drawTexture(RenderLayer::getGuiTextured, ICONS, x + 2, y + 2, (favorite ? 26 : 0) + (isOverFavoriteButton(mouseX, mouseY) ? 13 : 0), 0, 13, 12, 52, 12);
         }
 
